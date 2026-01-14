@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { mockPersonal, mockSchema } from './mockData.js'
 import { generateSchedule } from './api/scheduleAgent.js'
+import { USE_MOCK_MODE } from './config';
 import './App.css'
 
 function App() {
@@ -93,6 +94,17 @@ function App() {
       <header className="header">
         <h1>Schemaläggningsassistent - Vårdavdelning 3B</h1>
       </header>
+      {USE_MOCK_MODE && (
+        <div style={{
+          background: '#fff3cd',
+          border: '1px solid #ffc107',
+          padding: '10px',
+          borderRadius: '4px',
+          marginBottom: '20px'
+        }}>
+          ⚠️ <strong>Mock Mode</strong> - AI-anrop simuleras (inga API-kostnader)
+        </div>
+      )}
 
       {/* Kontrollpanel - visas alltid när vi inte är i schedule-läge */}
       {view !== 'schedule' && (
@@ -133,12 +145,14 @@ function App() {
                 disabled={view === 'loading'}
               />
               <span className="toggle-text">
-                Använd AI-agent (kräver Cloudflare Worker)
+                Använd AI-agent {USE_MOCK_MODE ? '(Mock Mode)' : '(kräver Cloudflare Worker)'}
               </span>
             </label>
             {useAgent && (
               <p className="toggle-hint">
-                AI-agenten analyserar din input och använder verktyg för att generera schema.
+                {USE_MOCK_MODE
+                  ? 'Mock mode: Simulerar AI-agenten utan verkliga API-anrop.'
+                  : 'AI-agenten analyserar din input och använder verktyg för att generera schema.'}
               </p>
             )}
           </div>

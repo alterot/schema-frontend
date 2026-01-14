@@ -2,6 +2,7 @@
 // Manages the conversation loop with Claude API and executes tool calls
 
 import { CLAUDE_API_URL } from '../config.js';
+import { USE_MOCK_MODE } from '../config';
 import { getToolsForClaudeAPI, SYSTEM_PROMPT } from './toolDefinitions.js';
 import {
   fetchSchedule,
@@ -204,23 +205,23 @@ export function parseScheduleResponse(responseText) {
 
   // Try to extract konflikter
   const konfliktMatch = responseText.match(
-    /(?:konflikt|problem|varning)[er]?[:\s]*\n((?:[-*•⚠️]\s*.+\n?)+)/i
+    /(?:konflikt|problem|varning)[er]?[:\s]*\n((?:[-*\u2022\u26A0]\s*.+\n?)+)/i
   );
   if (konfliktMatch) {
     result.konflikter = konfliktMatch[1]
       .split('\n')
-      .map((line) => line.replace(/^[-*•⚠️]\s*/, '').trim())
+      .map((line) => line.replace(/^[-*\u2022\u26A0]+\s*/, '').trim())
       .filter((line) => line.length > 0);
   }
 
   // Try to extract rekommendationer
   const rekMatch = responseText.match(
-    /(?:rekommend|förslag|åtgärd)[er]?[:\s]*\n((?:[-*•✅]\s*.+\n?)+)/i
+    /(?:rekommend|förslag|åtgärd)[er]?[:\s]*\n((?:[-*\u2022\u2705]\s*.+\n?)+)/i
   );
   if (rekMatch) {
     result.rekommendationer = rekMatch[1]
       .split('\n')
-      .map((line) => line.replace(/^[-*•✅]\s*/, '').trim())
+      .map((line) => line.replace(/^[-*\u2022\u2705]\s*/, '').trim())
       .filter((line) => line.length > 0);
   }
 
@@ -237,6 +238,46 @@ export function parseScheduleResponse(responseText) {
  * @returns {Promise<Object>} - Result compatible with existing UI
  */
 export async function generateSchedule(userInput, period, onProgress) {
+  // Mock mode - simulera utan API-anrop
+  if (USE_MOCK_MODE) {
+    console.log("🤖 MOCK MODE: Simulerar AI agent (inga API-kostnader)");
+
+    // Simulera progress callbacks (samma format som real mode)
+    if (onProgress) {
+      onProgress({ iteration: 1, status: 'calling_claude' });
+      await new Promise(r => setTimeout(r, 500));
+      onProgress({ iteration: 1, status: 'executing_tool', toolName: 'read_schedule' });
+      await new Promise(r => setTimeout(r, 500));
+      onProgress({ iteration: 2, status: 'calling_claude' });
+      await new Promise(r => setTimeout(r, 500));
+    }
+    
+    // Mock response
+    return {
+      success: true,
+      tolkadInput: [
+        "Period: " + period,
+        "Input: " + userInput,
+        "Mock mode aktiverat - inga verkliga API-anrop"
+      ],
+      konflikter: [
+        {
+          datum: `${period}-15`,
+          pass: 'natt',
+          beskrivning: 'Mock: Saknar 1 undersköterska',
+          typ: 'undermanning'
+        }
+      ],
+      rekommendationer: [
+        "Mock: Överväg att omfördela personal från dagpass",
+        "Mock: Kontakta vikariepool för nattpassen"
+      ],
+      agentResponse: "Mock AI Agent: Jag har analyserat din input och genererat ett simulerat schema. Detta är mock-data för att spara API-tokens under utveckling.",
+      iterations: 1
+    };
+  }
+
+  // Real mode - faktiska API-anrop
   try {
     const agentResult = await runScheduleAgent(userInput, period, onProgress);
     const parsed = parseScheduleResponse(agentResult.text);
@@ -246,7 +287,7 @@ export async function generateSchedule(userInput, period, onProgress) {
       tolkadInput: parsed.tolkadInput.length > 0
         ? parsed.tolkadInput
         : [`Period: ${period}`, `Input: ${userInput.substring(0, 100)}...`],
-      konflikter: parsed.konflikter.map((desc, index) => ({
+      konflikter: parsed.konflikter.map((desc) => ({
         datum: `${period}-01`,
         pass: 'dag',
         beskrivning: desc,

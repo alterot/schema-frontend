@@ -1,3 +1,6 @@
+// Toggle för att spara API tokens under utveckling
+export const USE_MOCK_MODE = true; // Sätt till false för riktiga API-anrop
+
 // API Configuration
 
 // Backend URL - Flask server running OR-Tools constraint solver
