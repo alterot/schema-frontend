@@ -312,3 +312,5 @@ export async function generateSchedule(userInput, period, onProgress) {
     };
   }
 }
+
+
