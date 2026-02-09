@@ -1,14 +1,16 @@
-// Toggle för att spara API tokens under utveckling
-export const USE_MOCK_MODE = true; // Sätt till false för riktiga API-anrop
+// Auto-detect environment
+const isDev = import.meta.env.DEV; // Vite's built-in dev mode check
 
-// API Configuration
-
-// Backend URL - Flask server running OR-Tools constraint solver
-export const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || 'https://schema-backend-weym.onrender.com';
+// Backend URL - auto-switch mellan local och production
+export const BACKEND_URL = isDev 
+  ? 'http://localhost:5000'
+  : 'https://schema-backend-weym.onrender.com';
 
 // Claude API URL - Cloudflare Worker proxy for secure API calls
-// TODO: Replace with actual Cloudflare Worker URL when deployed
 export const CLAUDE_API_URL = import.meta.env.VITE_CLAUDE_API_URL || 'https://your-worker.your-subdomain.workers.dev';
+
+// Mock mode toggle
+export const USE_MOCK_MODE = true;
 
 // API Endpoints
 export const API_ENDPOINTS = {
@@ -19,4 +21,7 @@ export const API_ENDPOINTS = {
   propose: `${BACKEND_URL}/api/propose`,
   simulate: `${BACKEND_URL}/api/simulate`,
   apply: `${BACKEND_URL}/api/apply`,
+  personal: `${BACKEND_URL}/api/data/personal`,
+  bemanningsbehov: `${BACKEND_URL}/api/data/bemanningsbehov`,
+  regler: `${BACKEND_URL}/api/data/regler`,
 };

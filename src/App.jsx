@@ -2,12 +2,13 @@ import { useState } from 'react'
 import { mockPersonal, mockSchema } from './mockData.js'
 import { generateSchedule } from './api/scheduleAgent.js'
 import { USE_MOCK_MODE } from './config';
+import SettingsPage from './components/SettingsPage';
 import './App.css'
 
 function App() {
   const [selectedMonth, setSelectedMonth] = useState('2025-04')
   const [specialConditions, setSpecialConditions] = useState('')
-  const [view, setView] = useState('input') // input | loading | result | schedule
+  const [view, setView] = useState('input') // input | loading | result | schedule | settings
   const [agentResult, setAgentResult] = useState(null)
   const [loadingStatus, setLoadingStatus] = useState('')
   const [useAgent, setUseAgent] = useState(false) // Toggle mellan mock och agent
@@ -92,7 +93,18 @@ function App() {
     <div className="app-container">
       {/* Header */}
       <header className="header">
-        <h1>Schemaläggningsassistent - Vårdavdelning 3B</h1>
+        <div className="header-content">
+          <h1>Schemaläggningsassistent - Vårdavdelning 3B</h1>
+          {view !== 'settings' && (
+            <button
+              className="settings-button"
+              onClick={() => setView('settings')}
+              disabled={view === 'loading'}
+            >
+              Inställningar
+            </button>
+          )}
+        </div>
       </header>
       {USE_MOCK_MODE && (
         <div style={{
@@ -301,6 +313,11 @@ function App() {
             </table>
           </div>
         </div>
+      )}
+
+      {/* Inställningar */}
+      {view === 'settings' && (
+        <SettingsPage onBack={() => setView('input')} />
       )}
     </div>
   )

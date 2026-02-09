@@ -33,10 +33,39 @@ body {
   box-shadow: 0 2px 8px rgba(66, 153, 225, 0.15);
 }
 
+.header-content {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 20px;
+}
+
 .header h1 {
   font-size: 28px;
   font-weight: 600;
   letter-spacing: -0.5px;
+}
+
+.settings-button {
+  background: rgba(255, 255, 255, 0.2);
+  color: white;
+  border: 2px solid rgba(255, 255, 255, 0.4);
+  padding: 10px 20px;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.settings-button:hover:not(:disabled) {
+  background: rgba(255, 255, 255, 0.3);
+  border-color: rgba(255, 255, 255, 0.6);
+}
+
+.settings-button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
 }
 
 /* Kontrollpanel */
@@ -499,8 +528,18 @@ body {
     padding: 20px;
   }
 
+  .header-content {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 15px;
+  }
+
   .header h1 {
     font-size: 22px;
+  }
+
+  .settings-button {
+    width: 100%;
   }
 
   .control-panel,
