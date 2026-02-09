@@ -4,7 +4,7 @@ export const USE_MOCK_MODE = true; // Sätt till false för riktiga API-anrop
 // API Configuration
 
 // Backend URL - Flask server running OR-Tools constraint solver
-export const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || 'http://localhost:5000';
+export const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || 'https://schema-backend-weym.onrender.com';
 
 // Claude API URL - Cloudflare Worker proxy for secure API calls
 // TODO: Replace with actual Cloudflare Worker URL when deployed
