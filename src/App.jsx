@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { generateSchedule } from './api/scheduleAgent.js'
+import { generateSchedule, continueConversation } from './api/scheduleAgent.js'
 import { fetchSchedule } from './api/backend.js'
 import SettingsPage from './components/SettingsPage';
 import './App.css'
@@ -26,6 +26,8 @@ function App() {
   const [agentResult, setAgentResult] = useState(null)
   const [scheduleData, setScheduleData] = useState(null) // Real schedule from backend
   const [loadingStatus, setLoadingStatus] = useState('')
+  const [conversationMessages, setConversationMessages] = useState(null) // For multi-turn
+  const [followUpText, setFollowUpText] = useState('')
 
   const handleGenerateSchedule = async () => {
     setView('loading')
@@ -48,6 +50,7 @@ function App() {
         }
       )
       setAgentResult(result)
+      setConversationMessages(result.messages || null)
       setView('result')
     } catch (error) {
       console.error('Agent error:', error)
@@ -68,6 +71,51 @@ function App() {
 
   const handleAdjustInput = () => {
     setView('input')
+    setConversationMessages(null)
+    setFollowUpText('')
+  }
+
+  const handleFollowUp = async () => {
+    if (!followUpText.trim() || !conversationMessages) return
+
+    const input = followUpText.trim()
+    setFollowUpText('')
+    setView('loading')
+    setLoadingStatus('Skickar uppföljning...')
+
+    try {
+      const result = await continueConversation(
+        conversationMessages,
+        input,
+        selectedMonth,
+        (progress) => {
+          if (progress.status === 'loading_context') {
+            setLoadingStatus('Hämtar personaldata och regler...')
+          } else if (progress.status === 'calling_claude') {
+            setLoadingStatus(`Iteration ${progress.iteration}: Analyserar med AI...`)
+          } else if (progress.status === 'executing_tool') {
+            setLoadingStatus(`Iteration ${progress.iteration}: Kör ${progress.toolName}...`)
+          }
+        }
+      )
+      setAgentResult(result)
+      setConversationMessages(result.messages || null)
+      setView('result')
+    } catch (error) {
+      console.error('Follow-up error:', error)
+      setAgentResult({
+        success: false,
+        error: error.message,
+        tolkadInput: [],
+        konflikter: [{
+          datum: `${selectedMonth}-01`,
+          pass: 'dag',
+          beskrivning: `Fel: ${error.message}`,
+          typ: 'error',
+        }],
+      })
+      setView('result')
+    }
   }
 
   const handleShowSchedule = async () => {
@@ -238,10 +286,35 @@ function App() {
             </div>
           )}
 
+          {/* Follow-up input for multi-turn conversation */}
+          {conversationMessages && (
+            <div className="follow-up-section">
+              <label htmlFor="follow-up-input">Följ upp eller justera:</label>
+              <div className="follow-up-row">
+                <input
+                  id="follow-up-input"
+                  type="text"
+                  value={followUpText}
+                  onChange={(e) => setFollowUpText(e.target.value)}
+                  onKeyDown={(e) => e.key === 'Enter' && handleFollowUp()}
+                  placeholder="T.ex. &quot;Flytta Karins pass till Lisa istället&quot;"
+                  className="follow-up-input"
+                />
+                <button
+                  className="button-primary"
+                  onClick={handleFollowUp}
+                  disabled={!followUpText.trim()}
+                >
+                  Skicka
+                </button>
+              </div>
+            </div>
+          )}
+
           {/* Action buttons */}
           <div className="result-actions">
             <button className="button-secondary" onClick={handleAdjustInput}>
-              Justera input
+              Börja om
             </button>
             <button className="button-primary" onClick={handleShowSchedule}>
               Visa schema

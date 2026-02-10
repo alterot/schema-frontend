@@ -372,6 +372,7 @@ export async function generateSchedule(userInput, period, onProgress) {
       rekommendationer: parsed.rekommendationer,
       agentResponse: agentResult.text,
       iterations: agentResult.iterations,
+      messages: agentResult.messages,
     };
   } catch (error) {
     return {
@@ -389,4 +390,87 @@ export async function generateSchedule(userInput, period, onProgress) {
   }
 }
 
+/**
+ * Continue an existing conversation with a follow-up message.
+ * Reuses the existing messages array from a previous generateSchedule call.
+ *
+ * @param {Array} existingMessages - Messages array from previous agent result
+ * @param {string} followUpText - User's follow-up input
+ * @param {string} period - Schedule period (YYYY-MM)
+ * @param {Function} onProgress - Progress callback
+ * @returns {Promise<Object>} - Result compatible with existing UI
+ */
+export async function continueConversation(existingMessages, followUpText, period, onProgress) {
+  console.log(`[ScheduleAgent] Continue conversation: "${followUpText}"`);
 
+  if (onProgress) {
+    onProgress({ iteration: 0, status: 'loading_context' });
+  }
+
+  const ctx = await loadContext();
+  const systemPrompt = buildSystemPrompt(ctx.personal, ctx.bemanningsbehov, ctx.regler);
+
+  // Append follow-up to existing conversation
+  const messages = [...existingMessages, { role: 'user', content: followUpText }];
+
+  let iterations = 0;
+  let finalResponse = null;
+
+  while (iterations < MAX_ITERATIONS) {
+    iterations++;
+    if (onProgress) {
+      onProgress({ iteration: iterations, status: 'calling_claude' });
+    }
+
+    const response = await callClaudeAPI(messages, systemPrompt);
+
+    if (response.stop_reason === 'end_turn') {
+      finalResponse = response;
+      break;
+    }
+
+    if (response.stop_reason === 'tool_use') {
+      messages.push({ role: 'assistant', content: response.content });
+
+      const toolUseBlocks = response.content.filter((b) => b.type === 'tool_use');
+      const toolResults = [];
+
+      for (const toolUse of toolUseBlocks) {
+        if (onProgress) {
+          onProgress({ iteration: iterations, status: 'executing_tool', toolName: toolUse.name });
+        }
+        try {
+          const result = await executeTool(toolUse.name, toolUse.input);
+          toolResults.push({ type: 'tool_result', tool_use_id: toolUse.id, content: JSON.stringify(result) });
+        } catch (error) {
+          toolResults.push({ type: 'tool_result', tool_use_id: toolUse.id, content: JSON.stringify({ error: error.message }), is_error: true });
+        }
+      }
+
+      messages.push({ role: 'user', content: toolResults });
+    } else {
+      finalResponse = response;
+      break;
+    }
+  }
+
+  if (!finalResponse) {
+    throw new Error('Max iterations reached without final response');
+  }
+
+  const textBlocks = finalResponse.content.filter((b) => b.type === 'text');
+  const responseText = textBlocks.map((b) => b.text).join('\n');
+  const parsed = parseScheduleResponse(responseText);
+
+  return {
+    success: true,
+    tolkadInput: parsed.tolkadInput.length > 0 ? parsed.tolkadInput : [],
+    konflikter: parsed.konflikter.map((desc) => ({
+      datum: `${period}-01`, pass: 'dag', beskrivning: desc, typ: 'info',
+    })),
+    rekommendationer: parsed.rekommendationer,
+    agentResponse: responseText,
+    iterations: iterations,
+    messages: messages,
+  };
+}
