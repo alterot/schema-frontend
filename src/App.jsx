@@ -338,14 +338,24 @@ function App() {
             <div className="schedule-metrics">
               <span>Täckning: {scheduleData.metrics.coverage_percent}%</span>
               <span>Övertid: {scheduleData.metrics.overtime_hours}h</span>
-              <span>Regelbrott: {scheduleData.metrics.rule_violations}</span>
               <span>Kvalitet: {scheduleData.metrics.quality_score}/100</span>
             </div>
           )}
 
           {scheduleData.konflikter?.length > 0 && (
-            <div className="schedule-warning">
-              Detta schema innehåller {scheduleData.konflikter.length} konflikt(er)
+            <div className="schedule-conflicts">
+              <div className="schedule-warning">
+                {scheduleData.konflikter.length} konflikt(er) i schemat:
+              </div>
+              <ul className="schedule-conflict-list">
+                {scheduleData.konflikter.map((k, i) => (
+                  <li key={i} className="schedule-conflict-item">
+                    {k.datum && <strong>{k.datum}</strong>}
+                    {k.pass && <span> ({k.pass})</span>}
+                    {' — '}{k.beskrivning}
+                  </li>
+                ))}
+              </ul>
             </div>
           )}
 

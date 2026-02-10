@@ -73,7 +73,10 @@ export function invalidateContextCache() {
 async function executeTool(toolName, toolInput) {
   switch (toolName) {
     case 'read_schedule':
-      return await fetchSchedule(toolInput.period);
+      return await fetchSchedule(toolInput.period, {
+        regenerate: true,
+        constraint_overrides: toolInput.constraint_overrides,
+      });
 
     case 'propose_changes':
       return await proposeChanges(toolInput.problem);

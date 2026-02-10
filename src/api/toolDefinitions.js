@@ -4,13 +4,27 @@
 export const SCHEDULE_TOOLS = [
   {
     name: 'read_schedule',
-    description: 'Hamta befintligt schema for en specifik period. Anvand detta for att lasa aktuellt schema, se personal som ar schemalagda, och fa metrics om bemanningsgrad, overtid, etc.',
+    description: 'Hamta befintligt schema for en specifik period. Anvand detta for att lasa aktuellt schema, se personal som ar schemalagda, och fa metrics om bemanningsgrad, overtid, etc. Kan aven ta constraint_overrides for att tillata overtid — anvand BARA detta om anvandaren EXPLICIT ber om det.',
     input_schema: {
       type: 'object',
       properties: {
         period: {
           type: 'string',
           description: 'Period i YYYY-MM format (t.ex. "2025-04" for april 2025)',
+        },
+        constraint_overrides: {
+          type: 'object',
+          description: 'Valfritt: Override av constraints. Anvand BARA om anvandaren explicit tillater overtid.',
+          properties: {
+            extra_pass_per_person: {
+              type: 'integer',
+              description: 'Antal extra pass utover anstallningsgrad som tillats per person (t.ex. 3)',
+            },
+            extra_pass_roll: {
+              type: 'string',
+              description: 'Vilken roll overriden galler: "sjukskoterska", "underskoterska", "lakare", eller "alla"',
+            },
+          },
         },
       },
       required: ['period'],
@@ -166,6 +180,14 @@ När inputen är GENERELL (t.ex. "generera schema för mars"):
 → Läs schemat, rapportera kort hur det ser ut (täckning, kvalitet)
 → Skriv INTE långa förbättringsförslag — schemat är redan optimerat av solvern
 → Nämn bara FAKTISKA problem (regelbrott, undermanning), inte önskescenarier
+
+ÖVERTID — constraint_overrides:
+→ Föreslå ALDRIG övertid på eget initiativ
+→ Om solvern inte kan täcka alla pass: rapportera undermanning och förklara varför
+→ Om användaren EXPLICIT ber om övertid (t.ex. "tillåt 3 extra pass", "kör med övertid"):
+  → Tolka hur många extra pass och för vilken roll
+  → Anropa read_schedule med constraint_overrides: { extra_pass_per_person: N, extra_pass_roll: "roll" }
+  → Rapportera resultatet: ny täckning, faktisk övertid i timmar, vilka personer som påverkas
 
 ═══ SVARSFORMAT ═══
 
