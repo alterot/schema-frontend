@@ -64,6 +64,37 @@ export function invalidateContextCache() {
 }
 
 /**
+ * Summarize a full schedule result into a compact format for Claude.
+ * Full data is already cached on disk for "Visa schema" — Claude only needs
+ * metrics, conflicts, and per-person shift counts to write its analysis.
+ */
+function summarizeScheduleForAgent(result) {
+  const summary = {};
+
+  // Metrics (compact)
+  if (result.metrics) {
+    summary.metrics = result.metrics;
+  }
+
+  // Conflicts (keep full detail — usually 0-3 items)
+  if (result.konflikter) {
+    summary.konflikter = result.konflikter;
+  }
+
+  // Per-person shift distribution (from statistik)
+  if (result.statistik?.pass_per_person) {
+    summary.pass_per_person = result.statistik.pass_per_person;
+  }
+
+  // Basic info
+  summary.period = result.period;
+  summary.source = result.source;
+  summary.antal_pass = result.schema?.length || 0;
+
+  return summary;
+}
+
+/**
  * Execute a tool call based on tool name and input
  *
  * @param {string} toolName - Name of the tool to execute
@@ -72,11 +103,13 @@ export function invalidateContextCache() {
  */
 async function executeTool(toolName, toolInput) {
   switch (toolName) {
-    case 'read_schedule':
-      return await fetchSchedule(toolInput.period, {
+    case 'read_schedule': {
+      const fullResult = await fetchSchedule(toolInput.period, {
         regenerate: true,
         constraint_overrides: toolInput.constraint_overrides,
       });
+      return summarizeScheduleForAgent(fullResult);
+    }
 
     case 'propose_changes':
       return await proposeChanges(toolInput.problem);
@@ -110,7 +143,13 @@ async function callClaudeAPI(messages, systemPrompt) {
       model: 'claude-sonnet-4-20250514',
       max_tokens: 4096,
       temperature: 0,
-      system: systemPrompt,
+      system: [
+        {
+          type: 'text',
+          text: systemPrompt,
+          cache_control: { type: 'ephemeral' },
+        },
+      ],
       tools: getToolsForClaudeAPI(),
       messages: messages,
     }),
