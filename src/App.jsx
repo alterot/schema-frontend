@@ -1,7 +1,8 @@
 import { useState } from 'react'
 import { generateSchedule, continueConversation } from './api/scheduleAgent.js'
 import { fetchSchedule } from './api/backend.js'
-import SettingsPage from './components/SettingsPage';
+import SettingsPage from './components/SettingsPage'
+import ScheduleCalendar from './components/ScheduleCalendar'
 import './App.css'
 
 // Generera månadslista dynamiskt
@@ -143,27 +144,6 @@ function App() {
       date: dateString,
       weekday: weekdays[date.getDay()]
     }
-  }
-
-  // Group flat schema rows into day-based structure for the table
-  // Backend returns: [{datum, pass, personal: [names], ...}, ...]
-  // We need: [{datum, dag: [names], kvall: [names], natt: [names]}, ...]
-  const groupScheduleByDay = (schemaRows) => {
-    if (!schemaRows || schemaRows.length === 0) return []
-
-    const dayMap = {}
-    for (const row of schemaRows) {
-      const datum = row.datum
-      if (!dayMap[datum]) {
-        dayMap[datum] = { datum, dag: [], kvall: [], natt: [] }
-      }
-      const passType = row.pass === 'kväll' ? 'kvall' : row.pass
-      if (dayMap[datum][passType]) {
-        dayMap[datum][passType] = row.personal || []
-      }
-    }
-
-    return Object.values(dayMap).sort((a, b) => a.datum.localeCompare(b.datum))
   }
 
   return (
@@ -323,89 +303,14 @@ function App() {
         </div>
       )}
 
-      {/* Schemavy — visar riktigt data från backend solver */}
+      {/* Schemavy — hybrid kalendervy */}
       {view === 'schedule' && scheduleData && (
-        <div className="schedule-container">
-          <div className="schedule-header">
-            <h2>Schema för {monthOptions.find(o => o.value === selectedMonth)?.label || selectedMonth}</h2>
-            <button className="button-back" onClick={() => setView('result')}>
-              ← Tillbaka till resultat
-            </button>
-          </div>
-
-          {/* Metrics summary */}
-          {scheduleData.metrics && (
-            <div className="schedule-metrics">
-              <span>Täckning: {scheduleData.metrics.coverage_percent}%</span>
-              <span>Övertid: {scheduleData.metrics.overtime_hours}h</span>
-              <span>Kvalitet: {scheduleData.metrics.quality_score}/100</span>
-            </div>
-          )}
-
-          {scheduleData.konflikter?.length > 0 && (
-            <div className="schedule-conflicts">
-              <div className="schedule-warning">
-                {scheduleData.konflikter.length} konflikt(er) i schemat:
-              </div>
-              <ul className="schedule-conflict-list">
-                {scheduleData.konflikter.map((k, i) => (
-                  <li key={i} className="schedule-conflict-item">
-                    {k.datum && <strong>{k.datum}</strong>}
-                    {k.pass && <span> ({k.pass})</span>}
-                    {' — '}{k.beskrivning}
-                  </li>
-                ))}
-              </ul>
-            </div>
-          )}
-
-          <div className="table-wrapper">
-            <table className="schedule-table">
-              <thead>
-                <tr>
-                  <th>Datum</th>
-                  <th>Dag</th>
-                  <th>Kväll</th>
-                  <th>Natt</th>
-                </tr>
-              </thead>
-              <tbody>
-                {groupScheduleByDay(scheduleData.schema).map((day, index) => {
-                  const dateInfo = formatDate(day.datum)
-                  const hasConflict = scheduleData.konflikter?.some(k => k.datum === day.datum)
-                  const rowClass = hasConflict ? 'row-warning' : 'row-ok'
-
-                  return (
-                    <tr key={index} className={rowClass}>
-                      <td className="date-cell">
-                        <strong>{dateInfo.date}</strong>
-                        <span className="weekday">{dateInfo.weekday}</span>
-                      </td>
-                      <td className="shift-cell">
-                        {day.dag.map((name, i) => (
-                          <div key={i} className="staff-name">{name}</div>
-                        ))}
-                        {day.dag.length === 0 && <div className="staff-name empty">—</div>}
-                      </td>
-                      <td className="shift-cell">
-                        {day.kvall.map((name, i) => (
-                          <div key={i} className="staff-name">{name}</div>
-                        ))}
-                        {day.kvall.length === 0 && <div className="staff-name empty">—</div>}
-                      </td>
-                      <td className="shift-cell">
-                        {day.natt.map((name, i) => (
-                          <div key={i} className="staff-name">{name}</div>
-                        ))}
-                        {day.natt.length === 0 && <div className="staff-name empty">—</div>}
-                      </td>
-                    </tr>
-                  )
-                })}
-              </tbody>
-            </table>
-          </div>
-        </div>
+        <ScheduleCalendar
+          scheduleData={scheduleData}
+          selectedMonth={selectedMonth}
+          monthLabel={monthOptions.find(o => o.value === selectedMonth)?.label || selectedMonth}
+          onBack={() => setView('result')}
+        />
       )}
 
       {/* Inställningar */}
