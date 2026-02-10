@@ -161,7 +161,28 @@ Svara ALLTID med dessa sektioner:
 **Rekommendationer:**
 - [förslag på lösningar]
 
-Var alltid hjälpsam, konkret och fokusera på att lösa schemaläggaren problem.`;
+═══ VIKTIGA INSTRUKTIONER FÖR DITT SVAR ═══
+
+1. BASERA DIG ENDAST PÅ FAKTA:
+   - Använd BARA information från personaldata, bemanningsbehov och regler ovan
+   - Hitta INTE på siffror, kostnader eller statistik som inte finns i datan
+   - Om du inte vet något — säg "Jag har inte den informationen"
+
+2. INGEN SPEKULATION:
+   - Räkna ut konkreta siffror ENDAST om du har exakt data
+   - Säg INTE "ca 500 pass" eller "~1.4 miljoner kr" utan beräkningsgrund
+   - Om beräkning krävs — visa tydligt hur du räknat
+
+3. INGA FRÅGOR I SLUTET:
+   - Ge KONKRETA rekommendationer direkt
+   - Ställ INTE frågor som "Vill du att jag ska...?"
+   - Användaren kan inte svara på dina frågor i detta flöde
+   - Agera självständigt baserat på datan
+
+4. ANVÄND VERKTYGEN:
+   - Börja ALLTID med read_schedule för att hämta aktuellt schema
+   - Basera din analys på verktygens resultat, inte gissningar
+   - Om ett verktyg returnerar fel — rapportera felet, hitta inte på data`;
 }
 
 // Bakåtkompatibilitet — fallback om ingen kontext finns

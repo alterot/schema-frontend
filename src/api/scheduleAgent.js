@@ -106,6 +106,7 @@ async function callClaudeAPI(messages, systemPrompt) {
     body: JSON.stringify({
       model: 'claude-sonnet-4-20250514',
       max_tokens: 4096,
+      temperature: 0,
       system: systemPrompt,
       tools: getToolsForClaudeAPI(),
       messages: messages,

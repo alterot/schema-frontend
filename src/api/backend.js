@@ -1,21 +1,47 @@
 // Backend API Wrapper
 // Provides clean interface for all backend tool endpoints
+// All tool endpoints send localStorage data (personal/bemanningsbehov) to backend
 
 import { API_ENDPOINTS } from '../config.js';
+import { loadStaffData, loadRequirements } from '../utils/storage.js';
+
+/**
+ * Load localStorage overrides for backend calls.
+ * Returns { personal, bemanningsbehov } or empty object if no local data.
+ */
+async function getLocalOverrides() {
+  try {
+    const [personal, bemanningsbehov] = await Promise.all([
+      loadStaffData(),
+      loadRequirements(),
+    ]);
+    const overrides = {};
+    if (personal && personal.length > 0) overrides.personal = personal;
+    if (bemanningsbehov) overrides.bemanningsbehov = bemanningsbehov;
+    return overrides;
+  } catch (e) {
+    console.warn('[backend.js] Could not load local overrides:', e.message);
+    return {};
+  }
+}
 
 /**
  * Fetch schedule for a specific period
  * Tool: read_schedule
+ * Sends localStorage data via POST so backend uses frontend settings.
  *
  * @param {string} period - Period in YYYY-MM format (e.g., "2025-04")
  * @returns {Promise<{schema: Array, metrics: Object}>}
  */
 export async function fetchSchedule(period) {
+  const overrides = await getLocalOverrides();
+
   const response = await fetch(API_ENDPOINTS.schedule(period), {
-    method: 'GET',
+    method: 'POST',
     headers: {
       'Content-Type': 'application/json',
     },
+    body: JSON.stringify(overrides),
   });
 
   if (!response.ok) {
@@ -34,12 +60,14 @@ export async function fetchSchedule(period) {
  * @returns {Promise<{proposals: Array, reasoning: string}>}
  */
 export async function proposeChanges(problem) {
+  const overrides = await getLocalOverrides();
+
   const response = await fetch(API_ENDPOINTS.propose, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
     },
-    body: JSON.stringify({ problem }),
+    body: JSON.stringify({ problem, ...overrides }),
   });
 
   if (!response.ok) {
@@ -58,12 +86,14 @@ export async function proposeChanges(problem) {
  * @returns {Promise<{metrics_before: Object, metrics_after: Object, impact: string}>}
  */
 export async function simulateImpact(changes) {
+  const overrides = await getLocalOverrides();
+
   const response = await fetch(API_ENDPOINTS.simulate, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
     },
-    body: JSON.stringify({ changes }),
+    body: JSON.stringify({ changes, ...overrides }),
   });
 
   if (!response.ok) {
