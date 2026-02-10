@@ -1,5 +1,6 @@
 import { useState, useEffect, useMemo } from 'react'
 import { loadRequirements } from '../utils/storage'
+import { API_ENDPOINTS } from '../config'
 import DayModal from './DayModal'
 import PersonTimeline from './PersonTimeline'
 import './ScheduleCalendar.css'
@@ -147,6 +148,10 @@ function ScheduleCalendar({ scheduleData, selectedMonth, monthLabel, onBack }) {
   // Selected day data for modal
   const selectedDayData = selectedDay ? dayMap[selectedDay] : null
 
+  const handleExportExcel = () => {
+    window.open(API_ENDPOINTS.scheduleExport(selectedMonth), '_blank')
+  }
+
   return (
     <div className="cal-container">
       {/* Header */}
@@ -167,6 +172,9 @@ function ScheduleCalendar({ scheduleData, selectedMonth, monthLabel, onBack }) {
               Per person
             </button>
           </div>
+          <button className="button-export" onClick={handleExportExcel}>
+            Exportera Excel
+          </button>
           <button className="button-back" onClick={onBack}>
             Tillbaka
           </button>
@@ -234,21 +242,21 @@ function ScheduleCalendar({ scheduleData, selectedMonth, monthLabel, onBack }) {
                 {summary && (
                   <div className="cal-cell-shifts">
                     <span className={summary.dag.required === null || summary.dag.actual >= summary.dag.required ? 'shift-ok' : 'shift-short'}>
-                      D:{summary.dag.actual}{summary.dag.required !== null ? `/${summary.dag.required}` : ''}
+                      Dag {summary.dag.actual}{summary.dag.required !== null ? `/${summary.dag.required}` : ''}
                     </span>
                     <span className={summary.kvall.required === null || summary.kvall.actual >= summary.kvall.required ? 'shift-ok' : 'shift-short'}>
-                      K:{summary.kvall.actual}{summary.kvall.required !== null ? `/${summary.kvall.required}` : ''}
+                      Kväll {summary.kvall.actual}{summary.kvall.required !== null ? `/${summary.kvall.required}` : ''}
                     </span>
                     <span className={summary.natt.required === null || summary.natt.actual >= summary.natt.required ? 'shift-ok' : 'shift-short'}>
-                      N:{summary.natt.actual}{summary.natt.required !== null ? `/${summary.natt.required}` : ''}
+                      Natt {summary.natt.actual}{summary.natt.required !== null ? `/${summary.natt.required}` : ''}
                     </span>
                   </div>
                 )}
                 {!summary && dayData && (
                   <div className="cal-cell-shifts">
-                    <span>D:{dayData.dag.length}</span>
-                    <span>K:{dayData.kvall.length}</span>
-                    <span>N:{dayData.natt.length}</span>
+                    <span>Dag {dayData.dag.length}</span>
+                    <span>Kväll {dayData.kvall.length}</span>
+                    <span>Natt {dayData.natt.length}</span>
                   </div>
                 )}
               </div>

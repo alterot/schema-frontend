@@ -113,6 +113,25 @@
   color: white;
 }
 
+/* --- Export Button --- */
+
+.button-export {
+  background: var(--color-success);
+  color: white;
+  border: none;
+  padding: 8px 16px;
+  border-radius: var(--radius-md);
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  min-height: var(--min-touch-target);
+  transition: background 0.15s ease;
+}
+
+.button-export:hover {
+  background: #1B5E20;
+}
+
 /* --- Calendar Grid --- */
 
 .cal-grid {
@@ -198,8 +217,8 @@
 .cal-cell-shifts {
   display: flex;
   flex-direction: column;
-  gap: 1px;
-  font-size: 11px;
+  gap: 2px;
+  font-size: 13px;
   font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
 }
 
@@ -557,7 +576,7 @@
   }
 
   .cal-cell-shifts {
-    font-size: 10px;
+    font-size: 11px;
   }
 
   .cal-cell-date {
@@ -586,7 +605,7 @@
   }
 
   .cal-cell-shifts {
-    font-size: 9px;
+    font-size: 10px;
     gap: 0;
   }
 

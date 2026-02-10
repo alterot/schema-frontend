@@ -18,6 +18,7 @@ export const API_ENDPOINTS = {
   generate: `${BACKEND_URL}/api/generate`,
   validate: `${BACKEND_URL}/api/validate`,
   schedule: (period) => `${BACKEND_URL}/api/schedule/${period}`,
+  scheduleExport: (period) => `${BACKEND_URL}/api/schedule/${period}/export`,
   propose: `${BACKEND_URL}/api/propose`,
   simulate: `${BACKEND_URL}/api/simulate`,
   apply: `${BACKEND_URL}/api/apply`,
