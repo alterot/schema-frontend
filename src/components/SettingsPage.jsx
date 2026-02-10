@@ -7,6 +7,7 @@ import {
   resetToBaseline,
   hasLocalChanges,
 } from '../utils/storage';
+import { invalidateContextCache } from '../api/scheduleAgent.js';
 import './SettingsPage.css';
 
 const WEEKDAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
@@ -72,11 +73,13 @@ function SettingsPage({ onBack }) {
 
   const handleSavePersonal = () => {
     saveStaffData(personal);
+    invalidateContextCache();
     setHasChanges(true);
   };
 
   const handleSaveRequirements = () => {
     saveRequirements(bemanningsbehov);
+    invalidateContextCache();
     setHasChanges(true);
   };
 
@@ -85,6 +88,7 @@ function SettingsPage({ onBack }) {
       const { personal: resetPersonal, bemanningsbehov: resetReq } = await resetToBaseline();
       setPersonal(resetPersonal || []);
       setBemanningsbehov(resetReq);
+      invalidateContextCache();
       setHasChanges(false);
     }
   };

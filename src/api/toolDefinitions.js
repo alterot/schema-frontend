@@ -72,32 +72,100 @@ export const SCHEDULE_TOOLS = [
   },
 ];
 
-// System prompt for the scheduling assistant
-export const SYSTEM_PROMPT = `Du ar en schemalagningsassistent for en vardavdelning. Du hjalper schemalagare att tolka deras instruktioner och skapa optimala scheman.
+// Rolletiketter för visning
+const ROLL_LABELS = {
+  lakare: 'Läkare',
+  sjukskoterska: 'Sjuksköterska',
+  underskoterska: 'Undersköterska',
+};
 
-DIN UPPGIFT:
-1. Tolka anvandarens fritextinput om schemaandringar
-2. Anvand tillgangliga verktyg for att hamta, analysera och foreslä schemaandringar
-3. Presentera information pa ett tydligt och koncist satt
+const DAG_LABELS = {
+  Mon: 'Mån', Tue: 'Tis', Wed: 'Ons', Thu: 'Tor', Fri: 'Fre', Sat: 'Lör', Sun: 'Sön',
+};
 
-TILLGÄNGLIGA VERKTYG:
-- read_schedule: Hamta befintligt schema for en period
-- propose_changes: Foresla losningar pa problem
-- simulate_impact: Simulera konsekvenser av andringar
-- apply_changes: Applicera godkanda andringar
+/**
+ * Bygg en dynamisk system prompt med full kontext.
+ *
+ * @param {Array} personal - Lista med personalobjekt
+ * @param {Object} bemanningsbehov - { vardag: {...}, helg: {...} }
+ * @param {Object} regler - { vilotid_timmar, max_dagar_i_rad, ... }
+ * @returns {string} Komplett system prompt
+ */
+export function buildSystemPrompt(personal, bemanningsbehov, regler) {
+  // --- Personal-sektion ---
+  const personalRows = (personal || []).map((p) => {
+    const roll = ROLL_LABELS[p.roll] || p.roll;
+    const dagar = (p.tillganglighet || []).map(d => DAG_LABELS[d] || d).join(', ');
+    const franvaroStr = (p.franvaro || []).length > 0
+      ? p.franvaro.map(f => `${f.typ} ${f.start}–${f.slut}`).join('; ')
+      : 'ingen';
+    return `- ${p.namn} | ${roll} | ${p.anstallning}% | Tillgänglig: ${dagar} | Frånvaro: ${franvaroStr}`;
+  }).join('\n');
 
-NAR DU TOLKAR INPUT:
-- Identifiera personal som namns (t.ex. "Anna semester")
-- Identifiera datum/perioder (t.ex. "10-20 april", "vecka 15-16")
-- Identifiera typ av handelse (semester, sjuk, extra behov)
-- Identifiera specialkrav (t.ex. "+1 underskoterska pa dagpass")
+  // --- Bemanningsbehov-sektion ---
+  function formatBehov(behov) {
+    if (!behov) return '(data saknas)';
+    return ['dag', 'kvall', 'natt'].map((pass) => {
+      const b = behov[pass];
+      if (!b) return '';
+      const parts = Object.entries(b)
+        .filter(([, v]) => v > 0)
+        .map(([k, v]) => `${v} ${ROLL_LABELS[k] || k}`)
+        .join(', ');
+      return `  ${pass === 'kvall' ? 'Kväll' : pass.charAt(0).toUpperCase() + pass.slice(1)}: ${parts}`;
+    }).filter(Boolean).join('\n');
+  }
 
-SVARSFORMAT:
-- Sammanfatta vad du tolkade fran input
-- Lista eventuella konflikter eller problem
-- Ge tydliga rekommendationer
+  const vardagBehov = formatBehov(bemanningsbehov?.vardag);
+  const helgBehov = formatBehov(bemanningsbehov?.helg);
 
-Var alltid hjalpsam, konkret och fokusera pa att losa schemalaggarens problem.`;
+  // --- Regler-sektion ---
+  const reglerText = regler
+    ? `- Minst ${regler.vilotid_timmar}h vila mellan pass
+- Max ${regler.max_dagar_i_rad} arbetsdagar i rad
+- Max ${regler.max_timmar_per_vecka_heltid}h per vecka (heltid)
+- Övertidsfaktor: ${regler.overtid_faktor}x`
+    : '(regler kunde inte hämtas)';
+
+  return `Du är en schemaläggningsassistent för en vårdavdelning.
+
+═══ PERSONAL (${(personal || []).length} anställda) ═══
+${personalRows || '(personaldata saknas)'}
+
+═══ BEMANNINGSBEHOV ═══
+Vardag (mån-fre):
+${vardagBehov}
+Helg (lör-sön):
+${helgBehov}
+
+═══ REGLER ═══
+${reglerText}
+
+═══ DIN UPPGIFT ═══
+1. Tolka användarens fritextinput om schemaändringar
+2. Matcha namn FLEXIBELT — "Anna" → "Dr. Anna Bergström", "Erik" → "Dr. Erik Lindqvist", etc.
+3. Identifiera datum/perioder (t.ex. "10-20 april", "vecka 15-16", "hela mars")
+4. Identifiera typ av händelse (semester, sjuk, VAB, konferens, extra bemanning, byte)
+5. Analysera påverkan på bemanningskrav — räkna om det blir undermanning någonstans
+6. Använd tillgängliga verktyg för att hämta, analysera och föreslå schemaändringar
+
+═══ SVARSFORMAT ═══
+Svara ALLTID med dessa sektioner:
+
+**Tolkade instruktioner:**
+- [lista varje tolkad punkt]
+
+**Konflikter/varningar:**
+- [lista eventuella bemanningsproblem, regelbrott, etc.]
+
+**Rekommendationer:**
+- [förslag på lösningar]
+
+Var alltid hjälpsam, konkret och fokusera på att lösa schemaläggaren problem.`;
+}
+
+// Bakåtkompatibilitet — fallback om ingen kontext finns
+export const SYSTEM_PROMPT = buildSystemPrompt([], null, null);
 
 // Helper to format tool definitions for Claude API
 export function getToolsForClaudeAPI() {

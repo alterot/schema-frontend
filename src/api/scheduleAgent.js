@@ -1,17 +1,67 @@
 // Schedule Agent - Tool Orchestration Layer
 // Manages the conversation loop with Claude API and executes tool calls
 
-import { CLAUDE_API_URL, USE_MOCK_MODE } from '../config.js';
-import { getToolsForClaudeAPI, SYSTEM_PROMPT } from './toolDefinitions.js';
+import { CLAUDE_API_URL, USE_MOCK_MODE, API_ENDPOINTS } from '../config.js';
+import { getToolsForClaudeAPI, buildSystemPrompt } from './toolDefinitions.js';
 import {
   fetchSchedule,
   proposeChanges,
   simulateImpact,
   applyChanges,
 } from './backend.js';
+import { loadStaffData, loadRequirements } from '../utils/storage.js';
 
 // Maximum number of tool-calling iterations to prevent infinite loops
 const MAX_ITERATIONS = 10;
+
+// ── Kontextdata-cache (hämtas en gång per session) ──
+let cachedContext = null;
+
+/**
+ * Hämta all kontextdata (personal, bemanningsbehov, regler).
+ * Försöker localStorage först via storage.js, sedan backend API.
+ * Cachas i minnet så att efterföljande anrop är gratis.
+ */
+async function loadContext() {
+  if (cachedContext) {
+    console.log('[Context] Använder cachad kontextdata');
+    return cachedContext;
+  }
+
+  console.log('[Context] Hämtar kontextdata...');
+
+  const [personal, bemanningsbehov, regler] = await Promise.all([
+    loadStaffData(),
+    loadRequirements(),
+    fetchRegler(),
+  ]);
+
+  console.log(`[Context] Personal: ${personal.length} st, Behov: ${bemanningsbehov ? 'OK' : 'saknas'}, Regler: ${regler ? 'OK' : 'saknas'}`);
+
+  cachedContext = { personal, bemanningsbehov, regler };
+  return cachedContext;
+}
+
+/**
+ * Hämta regler från backend API.
+ */
+async function fetchRegler() {
+  try {
+    const response = await fetch(API_ENDPOINTS.regler);
+    if (!response.ok) return null;
+    return await response.json();
+  } catch (e) {
+    console.warn('[Context] Kunde inte hämta regler:', e.message);
+    return null;
+  }
+}
+
+/**
+ * Invalidera kontextcachen (anropas om användaren ändrar inställningar).
+ */
+export function invalidateContextCache() {
+  cachedContext = null;
+}
 
 /**
  * Execute a tool call based on tool name and input
@@ -43,10 +93,11 @@ async function executeTool(toolName, toolInput) {
  * Call Claude API with messages and tools
  *
  * @param {Array} messages - Conversation messages
+ * @param {string} systemPrompt - Dynamic system prompt with full context
  * @returns {Promise<Object>} - Claude API response
  */
-async function callClaudeAPI(messages) {
-  console.log(`[ClaudeAPI] POST ${CLAUDE_API_URL} (${messages.length} messages)`);
+async function callClaudeAPI(messages, systemPrompt) {
+  console.log(`[ClaudeAPI] POST ${CLAUDE_API_URL} (${messages.length} messages, prompt ${systemPrompt.length} chars)`);
   const response = await fetch(CLAUDE_API_URL, {
     method: 'POST',
     headers: {
@@ -55,7 +106,7 @@ async function callClaudeAPI(messages) {
     body: JSON.stringify({
       model: 'claude-sonnet-4-20250514',
       max_tokens: 4096,
-      system: SYSTEM_PROMPT,
+      system: systemPrompt,
       tools: getToolsForClaudeAPI(),
       messages: messages,
     }),
@@ -82,10 +133,23 @@ async function callClaudeAPI(messages) {
  * @returns {Promise<Object>} - Final result with tolkadInput, konflikter, schema, etc.
  */
 export async function runScheduleAgent(userInput, period, onProgress) {
+  // Hämta kontextdata och bygg system prompt
+  if (onProgress) {
+    onProgress({ iteration: 0, status: 'loading_context' });
+  }
+  const ctx = await loadContext();
+  const systemPrompt = buildSystemPrompt(ctx.personal, ctx.bemanningsbehov, ctx.regler);
+  console.log(`[ScheduleAgent] System prompt byggt (${systemPrompt.length} tecken, ${ctx.personal.length} personal)`);
+
   const messages = [
     {
       role: 'user',
-      content: `Jag vill schemalägga för period ${period}. Här är mina instruktioner:\n\n${userInput}\n\nBörja med att läsa aktuellt schema för perioden och analysera sedan mina instruktioner.`,
+      content: `PERIOD: ${period}
+
+ANVÄNDARENS INSTRUKTIONER:
+${userInput}
+
+Analysera instruktionerna ovan mot personallistan och bemanningsbehoven i din kontext. Identifiera vilka personer som påverkas, vilka datum det gäller, och om det uppstår konflikter med bemanningskraven. Börja med att läsa aktuellt schema för perioden.`,
     },
   ];
 
@@ -101,7 +165,7 @@ export async function runScheduleAgent(userInput, period, onProgress) {
     }
 
     // Call Claude API
-    const response = await callClaudeAPI(messages);
+    const response = await callClaudeAPI(messages, systemPrompt);
 
     // Check stop reason
     if (response.stop_reason === 'end_turn') {

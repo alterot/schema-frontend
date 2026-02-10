@@ -1,6 +1,6 @@
 import { useState } from 'react'
-import { mockPersonal, mockSchema } from './mockData.js'
 import { generateSchedule } from './api/scheduleAgent.js'
+import { fetchSchedule } from './api/backend.js'
 import SettingsPage from './components/SettingsPage';
 import './App.css'
 
@@ -24,7 +24,9 @@ function App() {
   const [specialConditions, setSpecialConditions] = useState('')
   const [view, setView] = useState('input') // input | loading | result | schedule | settings
   const [agentResult, setAgentResult] = useState(null)
+  const [scheduleData, setScheduleData] = useState(null) // Real schedule from backend
   const [loadingStatus, setLoadingStatus] = useState('')
+
   const handleGenerateSchedule = async () => {
     setView('loading')
     setLoadingStatus('Startar...')
@@ -36,7 +38,9 @@ function App() {
         input,
         selectedMonth,
         (progress) => {
-          if (progress.status === 'calling_claude') {
+          if (progress.status === 'loading_context') {
+            setLoadingStatus('Hämtar personaldata och regler...')
+          } else if (progress.status === 'calling_claude') {
             setLoadingStatus(`Iteration ${progress.iteration}: Analyserar med AI...`)
           } else if (progress.status === 'executing_tool') {
             setLoadingStatus(`Iteration ${progress.iteration}: Kör ${progress.toolName}...`)
@@ -66,18 +70,21 @@ function App() {
     setView('input')
   }
 
-  const handleGenerateNewProposal = () => {
-    handleGenerateSchedule()
-  }
+  const handleShowSchedule = async () => {
+    setView('loading')
+    setLoadingStatus('Hämtar schema från solver...')
 
-  const handleShowSchedule = () => {
-    setView('schedule')
-  }
-
-  // Funktion för att hämta personalnamn baserat på ID
-  const getPersonalName = (id) => {
-    const person = mockPersonal.find(p => p.id === id)
-    return person ? person.namn : 'Okänd'
+    try {
+      const data = await fetchSchedule(selectedMonth)
+      console.log('[App] Schedule data received:', data)
+      setScheduleData(data)
+      setView('schedule')
+    } catch (error) {
+      console.error('Failed to fetch schedule:', error)
+      setLoadingStatus(`Kunde inte hämta schema: ${error.message}`)
+      // Go back to result after a short delay
+      setTimeout(() => setView('result'), 2000)
+    }
   }
 
   // Funktion för att formatera datum
@@ -88,6 +95,27 @@ function App() {
       date: dateString,
       weekday: weekdays[date.getDay()]
     }
+  }
+
+  // Group flat schema rows into day-based structure for the table
+  // Backend returns: [{datum, pass, personal: [names], ...}, ...]
+  // We need: [{datum, dag: [names], kvall: [names], natt: [names]}, ...]
+  const groupScheduleByDay = (schemaRows) => {
+    if (!schemaRows || schemaRows.length === 0) return []
+
+    const dayMap = {}
+    for (const row of schemaRows) {
+      const datum = row.datum
+      if (!dayMap[datum]) {
+        dayMap[datum] = { datum, dag: [], kvall: [], natt: [] }
+      }
+      const passType = row.pass === 'kväll' ? 'kvall' : row.pass
+      if (dayMap[datum][passType]) {
+        dayMap[datum][passType] = row.personal || []
+      }
+    }
+
+    return Object.values(dayMap).sort((a, b) => a.datum.localeCompare(b.datum))
   }
 
   return (
@@ -108,8 +136,8 @@ function App() {
         </div>
       </header>
 
-      {/* Kontrollpanel - visas alltid när vi inte är i schedule-läge */}
-      {view !== 'schedule' && (
+      {/* Kontrollpanel - visas alltid utom i schedule/settings-läge */}
+      {view !== 'schedule' && view !== 'settings' && (
         <div className="control-panel">
           <div className="control-group">
             <label htmlFor="month-select">Välj månad:</label>
@@ -215,18 +243,15 @@ function App() {
             <button className="button-secondary" onClick={handleAdjustInput}>
               Justera input
             </button>
-            <button className="button-secondary" onClick={handleGenerateNewProposal}>
-              Generera nytt förslag
-            </button>
             <button className="button-primary" onClick={handleShowSchedule}>
-              Visa schema ändå
+              Visa schema
             </button>
           </div>
         </div>
       )}
 
-      {/* Schemavy */}
-      {view === 'schedule' && (
+      {/* Schemavy — visar riktigt data från backend solver */}
+      {view === 'schedule' && scheduleData && (
         <div className="schedule-container">
           <div className="schedule-header">
             <h2>Schema för {monthOptions.find(o => o.value === selectedMonth)?.label || selectedMonth}</h2>
@@ -235,9 +260,19 @@ function App() {
             </button>
           </div>
 
-          {mockSchema.konflikter.length > 0 && (
+          {/* Metrics summary */}
+          {scheduleData.metrics && (
+            <div className="schedule-metrics">
+              <span>Täckning: {scheduleData.metrics.coverage_percent}%</span>
+              <span>Övertid: {scheduleData.metrics.overtime_hours}h</span>
+              <span>Regelbrott: {scheduleData.metrics.rule_violations}</span>
+              <span>Kvalitet: {scheduleData.metrics.quality_score}/100</span>
+            </div>
+          )}
+
+          {scheduleData.konflikter?.length > 0 && (
             <div className="schedule-warning">
-              ⚠️ Detta schema innehåller {mockSchema.konflikter.length} konflikt(er)
+              Detta schema innehåller {scheduleData.konflikter.length} konflikt(er)
             </div>
           )}
 
@@ -249,13 +284,12 @@ function App() {
                   <th>Dag</th>
                   <th>Kväll</th>
                   <th>Natt</th>
-                  <th>Status</th>
                 </tr>
               </thead>
               <tbody>
-                {mockSchema.schema.map((day, index) => {
+                {groupScheduleByDay(scheduleData.schema).map((day, index) => {
                   const dateInfo = formatDate(day.datum)
-                  const hasConflict = mockSchema.konflikter.some(k => k.datum === day.datum)
+                  const hasConflict = scheduleData.konflikter?.some(k => k.datum === day.datum)
                   const rowClass = hasConflict ? 'row-warning' : 'row-ok'
 
                   return (
@@ -265,26 +299,22 @@ function App() {
                         <span className="weekday">{dateInfo.weekday}</span>
                       </td>
                       <td className="shift-cell">
-                        {day.dag.map((id, i) => (
-                          <div key={i} className="staff-name">{getPersonalName(id)}</div>
+                        {day.dag.map((name, i) => (
+                          <div key={i} className="staff-name">{name}</div>
                         ))}
+                        {day.dag.length === 0 && <div className="staff-name empty">—</div>}
                       </td>
                       <td className="shift-cell">
-                        {day.kvall.map((id, i) => (
-                          <div key={i} className="staff-name">{getPersonalName(id)}</div>
+                        {day.kvall.map((name, i) => (
+                          <div key={i} className="staff-name">{name}</div>
                         ))}
+                        {day.kvall.length === 0 && <div className="staff-name empty">—</div>}
                       </td>
                       <td className="shift-cell">
-                        {day.natt.map((id, i) => (
-                          <div key={i} className="staff-name">{getPersonalName(id)}</div>
+                        {day.natt.map((name, i) => (
+                          <div key={i} className="staff-name">{name}</div>
                         ))}
-                      </td>
-                      <td className="status-cell">
-                        {hasConflict ? (
-                          <span className="status-icon warning">⚠️</span>
-                        ) : (
-                          <span className="status-icon ok">✅</span>
-                        )}
+                        {day.natt.length === 0 && <div className="staff-name empty">—</div>}
                       </td>
                     </tr>
                   )
