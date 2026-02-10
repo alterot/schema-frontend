@@ -1,59 +1,64 @@
 import { useState } from 'react'
 import { mockPersonal, mockSchema } from './mockData.js'
 import { generateSchedule } from './api/scheduleAgent.js'
-import { USE_MOCK_MODE } from './config';
 import SettingsPage from './components/SettingsPage';
 import './App.css'
 
+// Generera månadslista dynamiskt
+function getMonthOptions() {
+  const now = new Date()
+  const options = []
+  for (let i = 0; i < 12; i++) {
+    const d = new Date(now.getFullYear(), now.getMonth() + i, 1)
+    const value = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`
+    const label = d.toLocaleDateString('sv-SE', { year: 'numeric', month: 'long' })
+    options.push({ value, label: label.charAt(0).toUpperCase() + label.slice(1) })
+  }
+  return options
+}
+
+const monthOptions = getMonthOptions()
+
 function App() {
-  const [selectedMonth, setSelectedMonth] = useState('2025-04')
+  const [selectedMonth, setSelectedMonth] = useState(monthOptions[0].value)
   const [specialConditions, setSpecialConditions] = useState('')
   const [view, setView] = useState('input') // input | loading | result | schedule | settings
   const [agentResult, setAgentResult] = useState(null)
   const [loadingStatus, setLoadingStatus] = useState('')
-  const [useAgent, setUseAgent] = useState(false) // Toggle mellan mock och agent
-
   const handleGenerateSchedule = async () => {
     setView('loading')
     setLoadingStatus('Startar...')
 
-    if (useAgent && specialConditions.trim()) {
-      // Anvand AI-agenten
-      try {
-        const result = await generateSchedule(
-          specialConditions,
-          selectedMonth,
-          (progress) => {
-            if (progress.status === 'calling_claude') {
-              setLoadingStatus(`Iteration ${progress.iteration}: Analyserar med AI...`)
-            } else if (progress.status === 'executing_tool') {
-              setLoadingStatus(`Iteration ${progress.iteration}: Kor ${progress.toolName}...`)
-            }
+    const input = specialConditions.trim() || 'Generera ett standardschema utan särskilda villkor.'
+
+    try {
+      const result = await generateSchedule(
+        input,
+        selectedMonth,
+        (progress) => {
+          if (progress.status === 'calling_claude') {
+            setLoadingStatus(`Iteration ${progress.iteration}: Analyserar med AI...`)
+          } else if (progress.status === 'executing_tool') {
+            setLoadingStatus(`Iteration ${progress.iteration}: Kör ${progress.toolName}...`)
           }
-        )
-        setAgentResult(result)
-        setView('result')
-      } catch (error) {
-        console.error('Agent error:', error)
-        setAgentResult({
-          success: false,
-          error: error.message,
-          tolkadInput: [],
-          konflikter: [{
-            datum: `${selectedMonth}-01`,
-            pass: 'dag',
-            beskrivning: `Fel: ${error.message}`,
-            typ: 'error',
-          }],
-        })
-        setView('result')
-      }
-    } else {
-      // Anvand mock-data (fallback)
-      setTimeout(() => {
-        setAgentResult(null)
-        setView('result')
-      }, 2000)
+        }
+      )
+      setAgentResult(result)
+      setView('result')
+    } catch (error) {
+      console.error('Agent error:', error)
+      setAgentResult({
+        success: false,
+        error: error.message,
+        tolkadInput: [],
+        konflikter: [{
+          datum: `${selectedMonth}-01`,
+          pass: 'dag',
+          beskrivning: `Fel: ${error.message}`,
+          typ: 'error',
+        }],
+      })
+      setView('result')
     }
   }
 
@@ -62,11 +67,7 @@ function App() {
   }
 
   const handleGenerateNewProposal = () => {
-    setView('loading')
-
-    setTimeout(() => {
-      setView('result')
-    }, 2000)
+    handleGenerateSchedule()
   }
 
   const handleShowSchedule = () => {
@@ -94,7 +95,7 @@ function App() {
       {/* Header */}
       <header className="header">
         <div className="header-content">
-          <h1>Schemaläggningsassistent - Vårdavdelning 3B</h1>
+          <h1>Schemaläggningsassistent offentlig sektor</h1>
           {view !== 'settings' && (
             <button
               className="settings-button"
@@ -106,17 +107,6 @@ function App() {
           )}
         </div>
       </header>
-      {USE_MOCK_MODE && (
-        <div style={{
-          background: '#fff3cd',
-          border: '1px solid #ffc107',
-          padding: '10px',
-          borderRadius: '4px',
-          marginBottom: '20px'
-        }}>
-          ⚠️ <strong>Mock Mode</strong> - AI-anrop simuleras (inga API-kostnader)
-        </div>
-      )}
 
       {/* Kontrollpanel - visas alltid när vi inte är i schedule-läge */}
       {view !== 'schedule' && (
@@ -130,7 +120,9 @@ function App() {
               className="month-dropdown"
               disabled={view === 'loading'}
             >
-              <option value="2025-04">April 2025</option>
+              {monthOptions.map(opt => (
+                <option key={opt.value} value={opt.value}>{opt.label}</option>
+              ))}
             </select>
           </div>
 
@@ -147,34 +139,12 @@ function App() {
             />
           </div>
 
-          {/* Agent toggle */}
-          <div className="control-group agent-toggle">
-            <label className="toggle-label">
-              <input
-                type="checkbox"
-                checked={useAgent}
-                onChange={(e) => setUseAgent(e.target.checked)}
-                disabled={view === 'loading'}
-              />
-              <span className="toggle-text">
-                Använd AI-agent {USE_MOCK_MODE ? '(Mock Mode)' : '(kräver Cloudflare Worker)'}
-              </span>
-            </label>
-            {useAgent && (
-              <p className="toggle-hint">
-                {USE_MOCK_MODE
-                  ? 'Mock mode: Simulerar AI-agenten utan verkliga API-anrop.'
-                  : 'AI-agenten analyserar din input och använder verktyg för att generera schema.'}
-              </p>
-            )}
-          </div>
-
           <button
             className="generate-button"
             onClick={handleGenerateSchedule}
             disabled={view === 'loading'}
           >
-            {view === 'loading' ? 'Genererar schema...' : (useAgent ? 'Generera med AI' : 'Generera schema')}
+            {view === 'loading' ? 'Genererar schema...' : 'Generera schema'}
           </button>
         </div>
       )}
@@ -191,16 +161,18 @@ function App() {
       {view === 'result' && (
         <div className="result-container">
           {/* Tolkad input */}
-          <div className="interpreted-section">
-            <h2>✅ Agenten tolkade din input som:</h2>
-            <ul className="interpreted-list">
-              {(agentResult?.tolkadInput || mockSchema.tolkadInput).map((item, index) => (
-                <li key={index}>{item}</li>
-              ))}
-            </ul>
-          </div>
+          {agentResult?.tolkadInput?.length > 0 && (
+            <div className="interpreted-section">
+              <h2>Agenten tolkade din input som:</h2>
+              <ul className="interpreted-list">
+                {agentResult.tolkadInput.map((item, index) => (
+                  <li key={index}>{item}</li>
+                ))}
+              </ul>
+            </div>
+          )}
 
-          {/* Agent response (om AI användes) */}
+          {/* Agent response */}
           {agentResult?.agentResponse && (
             <div className="agent-response-section">
               <h2>AI-assistentens analys:</h2>
@@ -211,15 +183,15 @@ function App() {
           )}
 
           {/* Konfliktlista */}
-          {(agentResult?.konflikter || mockSchema.konflikter).length > 0 && (
+          {agentResult?.konflikter?.length > 0 && (
             <div className="conflicts-section">
-              <h2>⚠️ Konflikter upptäckta</h2>
+              <h2>Konflikter upptäckta</h2>
               <p className="conflicts-subtitle">Följande konflikter hittades i det genererade schemat:</p>
 
               <ul className="conflicts-list">
-                {(agentResult?.konflikter || mockSchema.konflikter).map((konflikt, index) => (
+                {agentResult.konflikter.map((konflikt, index) => (
                   <li key={index} className="conflict-item">
-                    <span className="conflict-icon">⚠️</span>
+                    <span className="conflict-icon">!</span>
                     <div className="conflict-details">
                       <strong>{formatDate(konflikt.datum).date}</strong> - {konflikt.pass}
                       <p>{konflikt.beskrivning}</p>
@@ -227,6 +199,14 @@ function App() {
                   </li>
                 ))}
               </ul>
+            </div>
+          )}
+
+          {/* Felmeddelande om agenten misslyckades */}
+          {agentResult && !agentResult.success && (
+            <div className="conflicts-section">
+              <h2>Något gick fel</h2>
+              <p className="conflicts-subtitle">{agentResult.error}</p>
             </div>
           )}
 
@@ -249,7 +229,7 @@ function App() {
       {view === 'schedule' && (
         <div className="schedule-container">
           <div className="schedule-header">
-            <h2>Schema för {selectedMonth === '2025-04' ? 'April 2025' : selectedMonth}</h2>
+            <h2>Schema för {monthOptions.find(o => o.value === selectedMonth)?.label || selectedMonth}</h2>
             <button className="button-back" onClick={() => setView('result')}>
               ← Tillbaka till resultat
             </button>

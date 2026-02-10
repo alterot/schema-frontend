@@ -1,8 +1,7 @@
 // Schedule Agent - Tool Orchestration Layer
 // Manages the conversation loop with Claude API and executes tool calls
 
-import { CLAUDE_API_URL } from '../config.js';
-import { USE_MOCK_MODE } from '../config';
+import { CLAUDE_API_URL, USE_MOCK_MODE } from '../config.js';
 import { getToolsForClaudeAPI, SYSTEM_PROMPT } from './toolDefinitions.js';
 import {
   fetchSchedule,
@@ -47,6 +46,7 @@ async function executeTool(toolName, toolInput) {
  * @returns {Promise<Object>} - Claude API response
  */
 async function callClaudeAPI(messages) {
+  console.log(`[ClaudeAPI] POST ${CLAUDE_API_URL} (${messages.length} messages)`);
   const response = await fetch(CLAUDE_API_URL, {
     method: 'POST',
     headers: {
@@ -63,10 +63,13 @@ async function callClaudeAPI(messages) {
 
   if (!response.ok) {
     const error = await response.json().catch(() => ({}));
+    console.error(`[ClaudeAPI] Error ${response.status}:`, error);
     throw new Error(error.error?.message || `Claude API error: ${response.status}`);
   }
 
-  return response.json();
+  const data = await response.json();
+  console.log(`[ClaudeAPI] Response: stop_reason=${data.stop_reason}, content blocks=${data.content?.length}`);
+  return data;
 }
 
 /**
@@ -238,9 +241,13 @@ export function parseScheduleResponse(responseText) {
  * @returns {Promise<Object>} - Result compatible with existing UI
  */
 export async function generateSchedule(userInput, period, onProgress) {
+  console.log(`[ScheduleAgent] USE_MOCK_MODE: ${USE_MOCK_MODE}`);
+  console.log(`[ScheduleAgent] CLAUDE_API_URL: ${CLAUDE_API_URL}`);
+  console.log(`[ScheduleAgent] Input: "${userInput}", Period: ${period}`);
+
   // Mock mode - simulera utan API-anrop
   if (USE_MOCK_MODE) {
-    console.log("🤖 MOCK MODE: Simulerar AI agent (inga API-kostnader)");
+    console.log("[ScheduleAgent] -> MOCK path (inga API-anrop)");
 
     // Simulera progress callbacks (samma format som real mode)
     if (onProgress) {
@@ -278,9 +285,13 @@ export async function generateSchedule(userInput, period, onProgress) {
   }
 
   // Real mode - faktiska API-anrop
+  console.log(`[ScheduleAgent] -> REAL path: Anropar Claude API at ${CLAUDE_API_URL}`);
   try {
     const agentResult = await runScheduleAgent(userInput, period, onProgress);
+    console.log(`[ScheduleAgent] API svar mottaget (${agentResult.iterations} iterationer)`);
+    console.log(`[ScheduleAgent] Response text:`, agentResult.text?.substring(0, 200) + '...');
     const parsed = parseScheduleResponse(agentResult.text);
+    console.log(`[ScheduleAgent] Parsed result:`, parsed);
 
     return {
       success: true,

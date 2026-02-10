@@ -7,10 +7,10 @@ export const BACKEND_URL = isDev
   : 'https://schema-backend-weym.onrender.com';
 
 // Claude API URL - Cloudflare Worker proxy for secure API calls
-export const CLAUDE_API_URL = import.meta.env.VITE_CLAUDE_API_URL || 'https://your-worker.your-subdomain.workers.dev';
+export const CLAUDE_API_URL = 'https://schema-assistant-proxy.alterot.workers.dev';  
 
 // Mock mode toggle
-export const USE_MOCK_MODE = true;
+export const USE_MOCK_MODE = false;  
 
 // API Endpoints
 export const API_ENDPOINTS = {

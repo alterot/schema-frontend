@@ -116,18 +116,6 @@ body {
   cursor: not-allowed;
 }
 
-/* Mock Mode Banner */
-.mock-mode-banner {
-  background: var(--color-warning-light);
-  border: 1px solid var(--color-warning);
-  border-left: 4px solid var(--color-warning);
-  padding: var(--spacing-sm);
-  border-radius: var(--radius-md);
-  margin-bottom: var(--spacing-md);
-  font-size: 14px;
-  color: #92400E;
-}
-
 /* ============================================
    Control Panel
    ============================================ */
@@ -593,44 +581,6 @@ body {
 
 .status-icon.warning {
   color: var(--color-warning);
-}
-
-/* ============================================
-   Agent Toggle
-   ============================================ */
-.agent-toggle {
-  margin-top: var(--spacing-sm);
-  padding-top: var(--spacing-sm);
-  border-top: 1px solid var(--color-border);
-}
-
-.toggle-label {
-  display: flex;
-  align-items: center;
-  cursor: pointer;
-  user-select: none;
-}
-
-.toggle-label input[type="checkbox"] {
-  width: 18px;
-  height: 18px;
-  margin-right: 10px;
-  cursor: pointer;
-  accent-color: var(--color-primary);
-}
-
-.toggle-text {
-  font-weight: 500;
-  color: var(--color-text);
-}
-
-.toggle-hint {
-  margin-top: var(--spacing-xs);
-  padding: var(--spacing-sm);
-  background: rgba(200, 16, 46, 0.05);
-  border-radius: var(--radius-md);
-  font-size: 13px;
-  color: var(--color-primary-dark);
 }
 
 /* Agent Response Section */
