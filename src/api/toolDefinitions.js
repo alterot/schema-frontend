@@ -313,6 +313,7 @@ Du kan kombinera FLERA overrides i samma anrop, även på SAMMA person:
 
 **Eventuella problem:**
 - [BARA faktiska konflikter från solvern, inte spekulationer]
+- Vid ojämn fördelning: förklara VARFÖR med faktisk personaldata (tillgänglighet, frånvaro, deltid, passrestriktion). Exempel: "Sara Nilsson har 6 helgpass medan Lisa Malmström har 2 — Lisa är 75% och har semester v.8-9". Hitta INTE PÅ orsaker — om du inte kan identifiera en konkret anledning, skriv bara siffrorna.
 
 ═══ REGLER FÖR SVARET ═══
 
