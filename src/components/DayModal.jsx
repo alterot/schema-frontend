@@ -22,9 +22,10 @@ function isWeekend(dateStr) {
   return day === 0 || day === 6
 }
 
-function getRequiredCount(bemanningsbehov, dateStr, passKey) {
+function getRequiredCount(bemanningsbehov, dateStr, passKey, helgdagar) {
   if (!bemanningsbehov) return null
-  const behov = isWeekend(dateStr) ? bemanningsbehov.helg : bemanningsbehov.vardag
+  const isHelg = isWeekend(dateStr) || (helgdagar && helgdagar.includes(dateStr))
+  const behov = isHelg ? bemanningsbehov.helg : bemanningsbehov.vardag
   if (!behov || !behov[passKey]) return null
   return Object.values(behov[passKey]).reduce((sum, n) => sum + n, 0)
 }
@@ -35,7 +36,7 @@ const SHIFT_CONFIG = [
   { key: 'natt', label: 'Natt (23:00-07:00)' },
 ]
 
-function DayModal({ datum, dayData, konflikter, bemanningsbehov, onClose }) {
+function DayModal({ datum, dayData, konflikter, bemanningsbehov, helgdagar, onClose }) {
   const overlayRef = useRef(null)
 
   useEffect(() => {
@@ -71,7 +72,7 @@ function DayModal({ datum, dayData, konflikter, bemanningsbehov, onClose }) {
         <div className="day-modal-body">
           {SHIFT_CONFIG.map(({ key, label }) => {
             const names = dayData?.[key] || []
-            const required = getRequiredCount(bemanningsbehov, datum, key)
+            const required = getRequiredCount(bemanningsbehov, datum, key, helgdagar)
             const actual = names.length
             const isOk = required === null || actual >= required
 

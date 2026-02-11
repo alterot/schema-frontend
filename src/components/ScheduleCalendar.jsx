@@ -92,8 +92,8 @@ function getDayStatus(datum, dayData, konflikter) {
 /**
  * Get shift summary (actual/required) for a day.
  */
-function getShiftSummary(dayData, bemanningsbehov) {
-  const weekend = isWeekend(dayData.datum)
+function getShiftSummary(dayData, bemanningsbehov, helgdagar) {
+  const weekend = isWeekend(dayData.datum) || (helgdagar && helgdagar.includes(dayData.datum))
   const behov = weekend ? bemanningsbehov?.helg : bemanningsbehov?.vardag
 
   const sumRoles = (shiftBehov) => {
@@ -228,10 +228,11 @@ function ScheduleCalendar({ scheduleData, selectedMonth, monthLabel, onBack }) {
 
             const dayData = dayMap[dateStr]
             const status = dayStatusMap[dateStr] || (dayData ? 'ok' : 'error')
-            const weekend = isWeekend(dateStr)
+            const helgdagar = scheduleData.helgdagar
+            const weekend = isWeekend(dateStr) || (helgdagar && helgdagar.includes(dateStr))
             const dayNum = parseInt(dateStr.split('-')[2])
             const summary = dayData && bemanningsbehov
-              ? getShiftSummary(dayData, bemanningsbehov)
+              ? getShiftSummary(dayData, bemanningsbehov, helgdagar)
               : null
 
             return (
@@ -284,6 +285,7 @@ function ScheduleCalendar({ scheduleData, selectedMonth, monthLabel, onBack }) {
           dayData={selectedDayData}
           konflikter={scheduleData.konflikter}
           bemanningsbehov={bemanningsbehov}
+          helgdagar={scheduleData.helgdagar}
           onClose={() => setSelectedDay(null)}
         />
       )}

@@ -246,7 +246,13 @@ När inputen är GENERELL (t.ex. "generera schema för mars"):
 → Skriv INTE långa förbättringsförslag — schemat är redan optimerat av solvern
 → Nämn bara FAKTISKA problem (regelbrott, undermanning), inte önskescenarier
 
-OBS om röda dagar: Helgdagar/röda dagar (midsommar, jul, nyår etc.) som infaller på vardagar ska behandlas som HELG vad gäller bemanningsbehov. Om du är osäker på vilka dagar som är röda — fråga användaren.
+OBS om röda dagar: Solvern hanterar redan röda dagar automatiskt (helg-bemanning). Men du måste tolka svenska helgbegrepp korrekt i frånvaro/datum:
+- "julhelgen" = 24-26 december (julafton, juldagen, annandag jul)
+- "nyår" = 31 december - 1 januari
+- "midsommar" = midsommarafton (fredag) + midsommardagen (lördag)
+- "påsk" = långfredag - annandag påsk (fredag-måndag)
+- "kristi himmelsfärd" = torsdagen (+ ev. fredag = klämdag)
+Om du är osäker på exakta datum — slå upp det för det aktuella året innan du agerar.
 
 ═══ ESKALERING VID OMÖJLIGT SCHEMA ═══
 Om solvern returnerar "ingen giltig lösning" (INFEASIBLE):

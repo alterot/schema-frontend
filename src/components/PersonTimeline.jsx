@@ -77,12 +77,34 @@ function isWeekend(dateStr) {
 
 const SHIFT_LABEL = { dag: 'D', kvall: 'K', natt: 'N' }
 
+/**
+ * Build lookup: personName -> Set of "YYYY-MM-DD" dates where person is frånvarande.
+ * Uses franvaro_perioder from backend (includes both registered and override absence).
+ */
+function buildFranvaroSet(franvaroPerioder) {
+  const map = {}
+  if (!franvaroPerioder) return map
+  for (const [namn, perioder] of Object.entries(franvaroPerioder)) {
+    const dateSet = new Set()
+    for (const p of perioder) {
+      const start = new Date(p.start)
+      const slut = new Date(p.slut)
+      for (let d = new Date(start); d <= slut; d.setDate(d.getDate() + 1)) {
+        dateSet.add(d.toISOString().slice(0, 10))
+      }
+    }
+    map[namn] = dateSet
+  }
+  return map
+}
+
 function PersonTimeline({ scheduleData, selectedMonth, personalList = [], onDayClick }) {
   const [expandedPerson, setExpandedPerson] = useState(null)
 
   const dates = useMemo(() => getDatesInMonth(selectedMonth), [selectedMonth])
   const persons = useMemo(() => getAllPersons(scheduleData.schema || [], personalList), [scheduleData, personalList])
   const shiftMap = useMemo(() => buildPersonShiftMap(scheduleData.schema || []), [scheduleData])
+  const franvaroMap = useMemo(() => buildFranvaroSet(scheduleData.franvaro_perioder), [scheduleData])
 
   // Per-person summary stats
   const personStats = useMemo(() => {
@@ -131,7 +153,8 @@ function PersonTimeline({ scheduleData, selectedMonth, personalList = [], onDayC
               </div>
               {dates.map(d => {
                 const shift = shiftMap[p.namn]?.[d]
-                const cellClass = shift ? shift : (p.hasShifts ? 'ledig' : 'franvarande')
+                const isFranvarande = franvaroMap[p.namn]?.has(d)
+                const cellClass = shift ? shift : (isFranvarande ? 'franvarande' : (p.hasShifts ? 'ledig' : 'franvarande'))
                 return (
                   <div
                     key={`${p.namn}-${d}`}
@@ -177,7 +200,8 @@ function PersonTimeline({ scheduleData, selectedMonth, personalList = [], onDayC
                 <div className="timeline-card-detail">
                   {dates.map(d => {
                     const shift = shiftMap[p.namn]?.[d]
-                    const cellClass = shift ? shift : (p.hasShifts ? 'ledig' : 'franvarande')
+                    const isFranvarande = franvaroMap[p.namn]?.has(d)
+                    const cellClass = shift ? shift : (isFranvarande ? 'franvarande' : (p.hasShifts ? 'ledig' : 'franvarande'))
                     const dayNum = parseInt(d.split('-')[2])
                     return (
                       <div
