@@ -302,9 +302,9 @@ export function parseScheduleResponse(responseText) {
     rekommendationer: [],
   };
 
-  // Try to extract tolkadInput (look for bullet points or numbered lists)
+  // Extract tolkadInput — bullet list after any "tolkad/tolkade" header
   const tolkadMatch = responseText.match(
-    /(?:tolkade?|förstod|identifierade)[:\s]*\n((?:[-*•]\s*.+\n?)+)/i
+    /[*]*[Tt]olkade?[^*\n]*[*]*[:\s]*\n((?:[-*•]\s*.+\n?)+)/
   );
   if (tolkadMatch) {
     result.tolkadInput = tolkadMatch[1]
@@ -404,7 +404,7 @@ export async function generateSchedule(userInput, period, onProgress) {
       success: true,
       tolkadInput: parsed.tolkadInput.length > 0
         ? parsed.tolkadInput
-        : [`Period: ${period}`, `Input: ${userInput.substring(0, 100)}...`],
+        : [`Period: ${period}`, `Input: ${userInput}`],
       konflikter: parsed.konflikter.map((desc) => ({
         datum: `${period}-01`,
         pass: 'dag',
