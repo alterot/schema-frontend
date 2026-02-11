@@ -73,9 +73,11 @@ function isWeekend(dateStr) {
  */
 function getDayStatus(datum, dayData, konflikter) {
   const dayConflicts = konflikter.filter(k => k.datum === datum)
+  // Ignorera info-nivå (allvarlighetsgrad 0) vid statusbedömning
+  const significantConflicts = dayConflicts.filter(k => k.allvarlighetsgrad > 0)
 
-  if (dayConflicts.length > 0) {
-    const hasSevere = dayConflicts.some(
+  if (significantConflicts.length > 0) {
+    const hasSevere = significantConflicts.some(
       k => k.allvarlighetsgrad === 3 || k.typ === 'undermanning'
     )
     return hasSevere ? 'error' : 'warning'
