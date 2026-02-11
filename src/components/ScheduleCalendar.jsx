@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo } from 'react'
-import { loadRequirements } from '../utils/storage'
+import { loadRequirements, loadStaffData } from '../utils/storage'
 import { API_ENDPOINTS } from '../config'
 import DayModal from './DayModal'
 import PersonTimeline from './PersonTimeline'
@@ -114,9 +114,11 @@ function ScheduleCalendar({ scheduleData, selectedMonth, monthLabel, onBack }) {
   const [viewMode, setViewMode] = useState('calendar')
   const [selectedDay, setSelectedDay] = useState(null)
   const [bemanningsbehov, setBemanningsbehov] = useState(null)
+  const [personalList, setPersonalList] = useState([])
 
   useEffect(() => {
     loadRequirements().then(setBemanningsbehov)
+    loadStaffData().then(list => setPersonalList(list || []))
   }, [])
 
   // Derived data
@@ -270,6 +272,7 @@ function ScheduleCalendar({ scheduleData, selectedMonth, monthLabel, onBack }) {
         <PersonTimeline
           scheduleData={scheduleData}
           selectedMonth={selectedMonth}
+          personalList={personalList}
           onDayClick={(datum) => setSelectedDay(datum)}
         />
       )}

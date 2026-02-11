@@ -475,6 +475,36 @@
   font-weight: 400;
 }
 
+.timeline-cell.franvarande {
+  background: repeating-linear-gradient(
+    -45deg,
+    var(--color-background),
+    var(--color-background) 3px,
+    var(--color-border) 3px,
+    var(--color-border) 4px
+  );
+  color: var(--color-text-muted);
+  font-weight: 400;
+  cursor: default;
+}
+
+.timeline-cell.franvarande:hover {
+  opacity: 1;
+}
+
+.timeline-person.absent {
+  opacity: 0.55;
+}
+
+.timeline-person-badge {
+  font-size: 10px;
+  color: var(--color-text-muted);
+  background: var(--color-background);
+  padding: 1px 5px;
+  border-radius: var(--radius-sm);
+  margin-left: 6px;
+}
+
 /* --- Timeline Mobile: Person Cards --- */
 
 .timeline-cards {
@@ -556,6 +586,31 @@
 .timeline-card-day.ledig {
   background: var(--color-background);
   color: var(--color-text-muted);
+}
+
+.timeline-card-day.franvarande {
+  background: repeating-linear-gradient(
+    -45deg,
+    var(--color-background),
+    var(--color-background) 2px,
+    var(--color-border) 2px,
+    var(--color-border) 3px
+  );
+  color: var(--color-text-muted);
+}
+
+.timeline-card.absent {
+  opacity: 0.55;
+}
+
+.timeline-card-absent-badge {
+  font-size: 11px;
+  color: var(--color-text-muted);
+  background: var(--color-background);
+  padding: 1px 6px;
+  border-radius: var(--radius-sm);
+  margin-left: 8px;
+  font-weight: 400;
 }
 
 /* --- Responsive --- */
