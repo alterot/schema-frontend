@@ -33,12 +33,12 @@ async function getLocalOverrides() {
  * @param {string} period - Period in YYYY-MM format (e.g., "2025-04")
  * @returns {Promise<{schema: Array, metrics: Object}>}
  */
-export async function fetchSchedule(period, { regenerate = false, constraint_overrides } = {}) {
+export async function fetchSchedule(period, { regenerate = false, personal_overrides } = {}) {
   const overrides = await getLocalOverrides();
 
   const body = { ...overrides, regenerate };
-  if (constraint_overrides) {
-    body.constraint_overrides = constraint_overrides;
+  if (personal_overrides) {
+    body.personal_overrides = personal_overrides;
   }
 
   const response = await fetch(API_ENDPOINTS.schedule(period), {

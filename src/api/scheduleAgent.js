@@ -106,7 +106,7 @@ async function executeTool(toolName, toolInput) {
     case 'read_schedule': {
       const fullResult = await fetchSchedule(toolInput.period, {
         regenerate: true,
-        constraint_overrides: toolInput.constraint_overrides,
+        personal_overrides: toolInput.personal_overrides,
       });
       return summarizeScheduleForAgent(fullResult);
     }

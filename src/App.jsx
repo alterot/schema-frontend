@@ -52,6 +52,8 @@ function App() {
       )
       setAgentResult(result)
       setConversationMessages(result.messages || null)
+      // Re-fetch schedule so calendar view shows latest data from solver
+      try { setScheduleData(await fetchSchedule(selectedMonth)) } catch (_) {}
       setView('result')
     } catch (error) {
       console.error('Agent error:', error)
@@ -101,6 +103,8 @@ function App() {
       )
       setAgentResult(result)
       setConversationMessages(result.messages || null)
+      // Re-fetch schedule so calendar view shows latest data from solver
+      try { setScheduleData(await fetchSchedule(selectedMonth)) } catch (_) {}
       setView('result')
     } catch (error) {
       console.error('Follow-up error:', error)
