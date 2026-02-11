@@ -53,6 +53,23 @@ export const SCHEDULE_TOOLS = [
                 type: 'integer',
                 description: 'Anställningsgrad i procent (vid action "add"). T.ex. 100.',
               },
+              exclude_pass_typer: {
+                type: 'array',
+                description: 'Passtyper personen INTE ska jobba. T.ex. ["natt"] eller ["kväll", "natt"]. Värden: "dag", "kväll", "natt".',
+                items: { type: 'string' },
+              },
+              lasta_pass: {
+                type: 'array',
+                description: 'Pass som personen MÅSTE jobba (låsta i schemat).',
+                items: {
+                  type: 'object',
+                  properties: {
+                    datum: { type: 'string', description: 'Datum YYYY-MM-DD' },
+                    pass_typ: { type: 'string', description: 'Passtyp: "dag", "kväll", eller "natt"' },
+                  },
+                  required: ['datum', 'pass_typ'],
+                },
+              },
             },
             required: ['namn'],
           },
@@ -252,7 +269,16 @@ Vikarie (tillfällig personal):
 Ändrad tillgänglighet:
 → personal_overrides: [{ namn: "Karin Nilsson", tillganglighet: ["Mon","Tue","Wed"] }]
 
-Du kan kombinera FLERA overrides i samma anrop.
+Passrestriktion (blockera passtyp):
+→ personal_overrides: [{ namn: "Erik Holm", exclude_pass_typer: ["natt"] }]
+→ Flera passtyper: [{ namn: "Erik Holm", exclude_pass_typer: ["kväll", "natt"] }]
+
+Låst pass (tvinga specifikt pass):
+→ personal_overrides: [{ namn: "Anna Berg", lasta_pass: [{ datum: "2026-06-22", pass_typ: "dag" }] }]
+→ Flera låsta pass: [{ namn: "Anna Berg", lasta_pass: [{ datum: "2026-06-22", pass_typ: "dag" }, { datum: "2026-06-25", pass_typ: "dag" }] }]
+
+Du kan kombinera FLERA overrides i samma anrop, även på SAMMA person:
+→ [{ namn: "Erik Holm", exclude_pass_typer: ["natt"], extra_pass: 2 }]
 
 ═══ SVARSFORMAT ═══
 
