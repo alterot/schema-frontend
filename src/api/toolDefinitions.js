@@ -288,8 +288,10 @@ Frånvaro (semester, sjuk, VAB, konferens):
 Vikarie (tillfällig personal):
 → personal_overrides: [{ namn: "Sara Ek", action: "add", roll: "sjukskoterska", anstallning: 100, tillganglighet: ["Mon","Tue","Wed","Thu","Fri"] }]
 
-Ändrad tillgänglighet:
+Ändrad tillgänglighet (begränsa vilka DAGAR personen kan jobba):
 → personal_overrides: [{ namn: "Karin Nilsson", tillganglighet: ["Mon","Tue","Wed"] }]
+→ "Kan inte jobba helger": tillganglighet: ["Mon","Tue","Wed","Thu","Fri"] (ta BORT "Sat","Sun")
+→ Använd ALDRIG add_franvaro för att ta bort helger — det gör personen helt frånvarande!
 
 Passrestriktion (blockera passtyp):
 → personal_overrides: [{ namn: "Erik Holm", exclude_pass_typer: ["natt"] }]
