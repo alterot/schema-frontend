@@ -21,13 +21,22 @@ function getDatesInMonth(yearMonth) {
 
 /**
  * Merge full personnel list (from settings) with schedule data.
- * Returns sorted array of { namn, roll, hasShifts }.
+ * Returns sorted array of { id, namn, roll, hasShifts }.
  * People with shifts come first, then absent people.
+ * schema.personal contains person IDs; personalLookup maps ID → {namn, roll}.
  */
-function getAllPersons(schema, personalList) {
-  const namesInSchema = new Set()
+function getAllPersons(schema, personalList, personalLookup) {
+  const idsInSchema = new Set()
   for (const row of schema) {
-    for (const name of row.personal || []) namesInSchema.add(name)
+    for (const id of row.personal || []) idsInSchema.add(id)
+  }
+
+  // Reverse lookup: namn → id (for personalList items missing id field)
+  const nameToId = {}
+  if (personalLookup) {
+    for (const [id, entry] of Object.entries(personalLookup)) {
+      nameToId[entry.namn] = Number(id)
+    }
   }
 
   const persons = []
@@ -35,14 +44,21 @@ function getAllPersons(schema, personalList) {
 
   // Add everyone from personalList (with role info)
   for (const p of personalList) {
-    seen.add(p.namn)
-    persons.push({ namn: p.namn, roll: p.roll, hasShifts: namesInSchema.has(p.namn) })
+    const pid = p.id ?? nameToId[p.namn]
+    if (pid != null) seen.add(pid)
+    persons.push({ id: pid, namn: p.namn, roll: p.roll, hasShifts: pid != null && idsInSchema.has(pid) })
   }
 
-  // Add anyone in schema but not in personalList (safety net)
-  for (const name of namesInSchema) {
-    if (!seen.has(name)) {
-      persons.push({ namn: name, roll: null, hasShifts: true })
+  // Add anyone in schema but not in personalList (safety net — e.g. vikarier)
+  for (const id of idsInSchema) {
+    if (!seen.has(id)) {
+      const entry = personalLookup?.[String(id)]
+      persons.push({
+        id,
+        namn: entry?.namn || `Person ${id}`,
+        roll: entry?.roll || null,
+        hasShifts: true,
+      })
     }
   }
 
@@ -56,15 +72,15 @@ function getAllPersons(schema, personalList) {
 }
 
 /**
- * Build lookup: personName -> { "YYYY-MM-DD": "dag"|"kvall"|"natt" }
+ * Build lookup: personId -> { "YYYY-MM-DD": "dag"|"kvall"|"natt" }
  */
 function buildPersonShiftMap(schema) {
   const map = {}
   for (const row of schema) {
     const passKey = row.pass === 'kväll' ? 'kvall' : row.pass
-    for (const name of row.personal || []) {
-      if (!map[name]) map[name] = {}
-      map[name][row.datum] = passKey
+    for (const id of row.personal || []) {
+      if (!map[id]) map[id] = {}
+      map[id][row.datum] = passKey
     }
   }
   return map
@@ -102,7 +118,7 @@ function PersonTimeline({ scheduleData, selectedMonth, personalList = [], onDayC
   const [expandedPerson, setExpandedPerson] = useState(null)
 
   const dates = useMemo(() => getDatesInMonth(selectedMonth), [selectedMonth])
-  const persons = useMemo(() => getAllPersons(scheduleData.schema || [], personalList), [scheduleData, personalList])
+  const persons = useMemo(() => getAllPersons(scheduleData.schema || [], personalList, scheduleData.personal_lookup), [scheduleData, personalList])
   const shiftMap = useMemo(() => buildPersonShiftMap(scheduleData.schema || []), [scheduleData])
   const franvaroMap = useMemo(() => buildFranvaroSet(scheduleData.franvaro_perioder), [scheduleData])
 
@@ -110,10 +126,10 @@ function PersonTimeline({ scheduleData, selectedMonth, personalList = [], onDayC
   const personStats = useMemo(() => {
     const stats = {}
     for (const p of persons) {
-      const shifts = shiftMap[p.namn] || {}
+      const shifts = shiftMap[p.id] || {}
       const total = Object.keys(shifts).length
       const weekendCount = Object.keys(shifts).filter(d => isWeekend(d)).length
-      stats[p.namn] = { total, weekendCount }
+      stats[p.id] = { total, weekendCount }
     }
     return stats
   }, [persons, shiftMap])
@@ -145,19 +161,19 @@ function PersonTimeline({ scheduleData, selectedMonth, personalList = [], onDayC
 
           {/* Person rows */}
           {persons.map(p => (
-            <Fragment key={p.namn}>
+            <Fragment key={p.id}>
               <div className={`timeline-person${p.hasShifts ? '' : ' absent'}`}>
                 <span className="timeline-person-name">{p.namn.split(' ').pop()}</span>
                 {p.roll && <span className="timeline-person-role">{ROLL_LABELS[p.roll] || p.roll}</span>}
                 {!p.hasShifts && <span className="timeline-person-badge">Frånv.</span>}
               </div>
               {dates.map(d => {
-                const shift = shiftMap[p.namn]?.[d]
+                const shift = shiftMap[p.id]?.[d]
                 const isFranvarande = franvaroMap[p.namn]?.has(d)
                 const cellClass = shift ? shift : (isFranvarande ? 'franvarande' : (p.hasShifts ? 'ledig' : 'franvarande'))
                 return (
                   <div
-                    key={`${p.namn}-${d}`}
+                    key={`${p.id}-${d}`}
                     className={`timeline-cell ${cellClass}`}
                     onClick={() => onDayClick(d)}
                     title={`${p.namn} - ${d}`}
@@ -174,14 +190,14 @@ function PersonTimeline({ scheduleData, selectedMonth, personalList = [], onDayC
       {/* Mobile: person cards */}
       <div className="timeline-cards">
         {persons.map(p => {
-          const stats = personStats[p.namn]
-          const isExpanded = expandedPerson === p.namn
+          const stats = personStats[p.id]
+          const isExpanded = expandedPerson === p.id
 
           return (
-            <div key={p.namn} className={`timeline-card${p.hasShifts ? '' : ' absent'}`}>
+            <div key={p.id} className={`timeline-card${p.hasShifts ? '' : ' absent'}`}>
               <div
                 className="timeline-card-header"
-                onClick={() => setExpandedPerson(isExpanded ? null : p.namn)}
+                onClick={() => setExpandedPerson(isExpanded ? null : p.id)}
               >
                 <div>
                   <div className="timeline-card-name">
@@ -199,7 +215,7 @@ function PersonTimeline({ scheduleData, selectedMonth, personalList = [], onDayC
               {isExpanded && (
                 <div className="timeline-card-detail">
                   {dates.map(d => {
-                    const shift = shiftMap[p.namn]?.[d]
+                    const shift = shiftMap[p.id]?.[d]
                     const isFranvarande = franvaroMap[p.namn]?.has(d)
                     const cellClass = shift ? shift : (isFranvarande ? 'franvarande' : (p.hasShifts ? 'ledig' : 'franvarande'))
                     const dayNum = parseInt(d.split('-')[2])

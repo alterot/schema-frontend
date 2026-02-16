@@ -42,11 +42,20 @@ function buildCalendarGrid(yearMonth) {
 
 /**
  * Group flat schema rows into day-based structure.
- * Input:  [{datum, pass, personal: [names]}, ...]
+ * Input:  [{datum, pass, personal: [IDs]}, ...]
  * Output: [{datum, dag: [names], kvall: [names], natt: [names]}, ...]
+ * Resolves person IDs to display names via personalLookup.
  */
-function groupScheduleByDay(schemaRows) {
+function groupScheduleByDay(schemaRows, personalLookup) {
   if (!schemaRows || schemaRows.length === 0) return []
+
+  const resolve = (pid) => {
+    if (personalLookup) {
+      const entry = personalLookup[String(pid)]
+      if (entry) return entry.namn
+    }
+    return String(pid)
+  }
 
   const dayMap = {}
   for (const row of schemaRows) {
@@ -56,7 +65,7 @@ function groupScheduleByDay(schemaRows) {
     }
     const passType = row.pass === 'kväll' ? 'kvall' : row.pass
     if (dayMap[datum][passType] !== undefined) {
-      dayMap[datum][passType] = row.personal || []
+      dayMap[datum][passType] = (row.personal || []).map(resolve)
     }
   }
 
@@ -130,7 +139,7 @@ function ScheduleCalendar({ scheduleData, selectedMonth, monthLabel, onBack }) {
   )
 
   const groupedDays = useMemo(
-    () => groupScheduleByDay(scheduleData.schema),
+    () => groupScheduleByDay(scheduleData.schema, scheduleData.personal_lookup),
     [scheduleData]
   )
 
