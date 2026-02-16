@@ -1,7 +1,7 @@
 import { useState, useMemo, Fragment } from 'react'
 
 const ROLL_LABELS = {
-  lakare: 'Lak',
+  lakare: 'Dr.',
   sjukskoterska: 'SSK',
   underskoterska: 'USK',
 }
